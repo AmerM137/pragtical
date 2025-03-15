@@ -141,12 +141,6 @@ config.non_word_chars = " \t\n/\\()\"':,.;<>~!@#$%^&*|+=[]{}`?-"
 config.symbol_chars = "/\\()\"':,.;<>~!@#$%^&*|+=[]{}`?-"
 config.space_chars = " \t\n"
 
----A list of characters that delimits a word.
----
----The default is ``" \t\n/\\()\"':,.;<>~!@#$%^&*|+=[]{}`?-"``
----@type string
-config.non_word_chars = " \t\n/\\()\"':,.;<>~!@#$%^&*|+=[]{}`?-"
-
 ---The timeout, in seconds, before several consecutive actions
 ---are merged as a single undo step.
 ---
@@ -224,7 +218,7 @@ config.scroll_context_lines = 1
 ---
 ---The default is true
 ---@type boolean
-config.show_line_numbers = true
+config.show_line_numbers = false
 
 ---The number of spaces each level of indentation represents.
 ---
