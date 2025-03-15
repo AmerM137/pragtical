@@ -148,7 +148,7 @@ function DocView:get_gutter_width()
   if config.show_line_numbers then
     return self:get_font():get_width(#self.doc.lines) + padding, padding
   end
-  return style.padding.x, padding
+  return 20, 0
 end
 
 

@@ -204,7 +204,7 @@ config.scroll_context_lines = 1
 ---
 ---The default is true
 ---@type boolean
-config.show_line_numbers = true
+config.show_line_numbers = false
 
 ---The number of spaces each level of indentation represents.
 ---
