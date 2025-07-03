@@ -137,6 +137,10 @@ config.symbol_pattern = "[%a_][%w_]*"
 ---@type boolean
 config.native_tokenizer = true
 
+config.non_word_chars = " \t\n/\\()\"':,.;<>~!@#$%^&*|+=[]{}`?-"
+config.symbol_chars = "/\\()\"':,.;<>~!@#$%^&*|+=[]{}`?-"
+config.space_chars = " \t\n"
+
 ---A list of characters that delimits a word.
 ---
 ---The default is ``" \t\n/\\()\"':,.;<>~!@#$%^&*|+=[]{}`?-"``
