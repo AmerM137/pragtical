@@ -1,4 +1,5 @@
 local common = require "core.common"
+local config = require "core.config"
 
 -- functions for translating a Doc position to another position these functions
 -- can be passed to Doc:move_to|select_to|delete_to()
@@ -10,6 +11,19 @@ local function is_non_word(doc, char)
   return doc:get_non_word_chars():find(char, nil, true)
 end
 
+local function is_word(char)
+  return not config.non_word_chars:find(char, nil, true)
+end
+
+
+local function is_symbol(char)
+  return config.symbol_chars:find(char, nil, true)
+end
+
+
+local function is_space(char)
+  return config.space_chars:find(char, nil, true)
+end
 
 function translate.previous_char(doc, line, col)
   repeat
