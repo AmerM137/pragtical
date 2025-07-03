@@ -1,4 +1,7 @@
 local core = require "core"
+
+---Functions to register and handle commands.
+---@class core.command
 local command = {}
 
 ---A predicate function accepts arguments from `command.perform()` and evaluates to a boolean. </br>
@@ -105,8 +108,8 @@ end
 ---@param name core.command.command_name
 ---@return string
 function command.prettify_name(name)
-  ---@diagnostic disable-next-line: redundant-return-value
-  return name:gsub(":", ": "):gsub("-", " "):gsub("%S+", capitalize_first)
+  name = name:gsub(":", ": "):gsub("-", " "):gsub("%S+", capitalize_first)
+  return name
 end
 
 

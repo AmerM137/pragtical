@@ -17,7 +17,10 @@ local DocView
 local Doc
 local Project
 
+---Core functionality.
+---@class core
 local core = {}
+
 local map_new_syntax_colors
 
 local function load_session()
@@ -517,6 +520,29 @@ function core.init()
   -- Parse commandline arguments
   cli.parse(ARGS)
 
+  -- Update the files to open
+  if cli.last_command ~= "default" then
+    files = {}
+    system.chdir(core.init_working_dir)
+    for _, argument in ipairs(cli.unhandled_arguments) do
+      local arg_filename = strip_trailing_slash(argument)
+      local info = system.get_file_info(arg_filename) or {}
+      if info.type ~= "dir" then
+        local filename = common.normalize_path(arg_filename)
+        local abs_filename = system.absolute_path(filename or "")
+        local file_abs
+        if filename == abs_filename then
+          file_abs = abs_filename
+        else
+          file_abs = system.absolute_path(".") .. PATHSEP .. filename
+        end
+        if file_abs then
+          table.insert(files, file_abs)
+        end
+      end
+    end
+  end
+
   -- Maximizing the window makes it lose the hidden attribute on Windows
   -- so we delay this to keep window hidden until args parsed. Also, on
   -- Wayland we have issues applying the mode before showing the window
@@ -658,7 +684,7 @@ end
 
 
 local mod_version_regex =
-  regex.compile([[--.*mod-version:(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:$|\s)]])
+  regex.compile([[--.*mod-version:\s*(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:$|\s)]])
 local function get_plugin_details(filename)
   local info = system.get_file_info(filename)
   if info ~= nil and info.type == "dir" then
@@ -1446,6 +1472,8 @@ local run_threads = coroutine.wrap(function()
     local runs = 0
     -- time taken to execute coroutines without yielding
     local total_time = 0
+    -- used to re-adjust the minimal_time_to_wake to prioritize recurrent threads
+    local run_start = system.get_time()
 
     for k, thread in pairs(core.threads) do
       -- run thread
@@ -1460,10 +1488,7 @@ local run_threads = coroutine.wrap(function()
             and
             start_time + thread.avg_time > cycle_end_time - main_loop_time
           then
-              coroutine.yield(
-                math.max(cycle_end_time - start_time, 0),
-                total_time
-              )
+              coroutine.yield(thread.avg_time, total_time)
               start_time = system.get_time()
               total_time = 0
           end
@@ -1487,9 +1512,14 @@ local run_threads = coroutine.wrap(function()
               thread.calls = 1
               thread.avg_time = end_time
             else
-              thread.time = thread.time + end_time
-              thread.calls = thread.calls + 1
-              thread.avg_time = thread.time / thread.calls
+              -- keep numbers small
+              thread.time = thread.calls < 1000
+                and thread.time + end_time
+                or end_time
+              thread.calls = thread.calls < 1000 and thread.calls + 1 or 1
+              thread.avg_time = thread.calls > 1
+                and thread.time / thread.calls
+                or thread.avg_time
             end
             -- penalize slow coroutines by setting their wait time to the
             -- same time it took to execute them.
@@ -1515,7 +1545,8 @@ local run_threads = coroutine.wrap(function()
       end
 
       -- stop running threads if we're about to hit the end of frame
-      if system.get_time() - core.frame_start > core.co_max_time then
+      local yield_time = system.get_time()
+      if yield_time - core.frame_start > core.co_max_time then
         -- set the maximum amount of coroutines to prevent exceeding max_time
         if max_coroutines > 1 then
           max_coroutines = math.max(runs-1, 1)
@@ -1523,7 +1554,15 @@ local run_threads = coroutine.wrap(function()
         coroutine.yield(0, total_time)
         total_time = 0
       elseif runs >= max_coroutines then
-        coroutine.yield(minimal_time_to_wake, total_time)
+        coroutine.yield(
+          yield_time - run_start > minimal_time_to_wake
+            and 0
+            or (minimal_time_to_wake > yield_time
+              and minimal_time_to_wake - yield_time
+              or minimal_time_to_wake
+            ),
+          total_time
+        )
         total_time = 0
       end
     end
@@ -1532,7 +1571,16 @@ local run_threads = coroutine.wrap(function()
     -- slow downs so we reset the maximum coroutines to amount it ran
     max_coroutines = math.max(max_coroutines, runs)
 
-    coroutine.yield(minimal_time_to_wake, total_time)
+    local yield_time = system.get_time() - run_start
+    coroutine.yield(
+      yield_time > minimal_time_to_wake
+        and 0
+        or (minimal_time_to_wake > yield_time
+          and minimal_time_to_wake - yield_time
+          or minimal_time_to_wake
+        ),
+      total_time
+    )
   end
 end)
 

@@ -1,3 +1,5 @@
+---Utility functions.
+---@class core.common
 local common = {}
 
 
@@ -125,10 +127,10 @@ function common.color(str)
     a = tonumber(a, 16) or 0xff
   elseif str:match("rgba?%s*%([%d%s%.,]+%)") then
     local f = str:gmatch("[%d.]+")
-    r = (f() or 0)
-    g = (f() or 0)
-    b = (f() or 0)
-    a = (f() or 1) * 0xff
+    r = tonumber(f() or 0)
+    g = tonumber(f() or 0)
+    b = tonumber(f() or 0)
+    a = tonumber(f() or 1) * 0xff
   else
     error(string.format("bad color string '%s'", str))
   end
@@ -251,15 +253,27 @@ local function compare_score(a, b)
   return a.score > b.score
 end
 
+local function compare_text(a, b)
+  return tostring(a.text) < tostring(b.text)
+end
+
 local function fuzzy_match_items(items, needle, files)
   local res = {}
+  needle = (PLATFORM == "Windows" and files) and needle:gsub('/', PATHSEP) or needle
   for _, item in ipairs(items) do
-    local score = system.fuzzy_match(tostring(item), needle, files)
+    local score = 0
+    if needle ~= "" then
+      score = system.fuzzy_match(tostring(item), needle, files)
+    end
     if score then
       table.insert(res, { text = item, score = score })
     end
   end
-  table.sort(res, compare_score)
+  if needle ~= "" then
+    table.sort(res, compare_score)
+  elseif not files then
+    table.sort(res, compare_text)
+  end
   for i, item in ipairs(res) do
     res[i] = item.text
   end

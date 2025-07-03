@@ -1,5 +1,7 @@
 local common = require "core.common"
 
+---Configuration options.
+---@class core.config
 local config = {}
 
 ---The frame rate of Pragtical.
@@ -128,6 +130,12 @@ config.max_visible_commands = 10
 ---@type integer
 config.max_visited_files = 5
 
+---Always hide tabs even if multiple documents are open.
+---
+---The default is false.
+---@type boolean
+config.hide_tabs = false
+
 ---Shows/hides the tab bar when there is only one tab open.
 ---
 ---The tab bar is always shown by default.
@@ -141,9 +149,9 @@ config.always_show_tabs = true
 
 ---Highlights the current line.
 ---
----The default is true.
+---The default is "no_selection".
 ---@type config.highlightlinetype
-config.highlight_current_line = true
+config.highlight_current_line = "no_selection"
 
 ---The spacing between each line of text.
 ---
@@ -282,6 +290,12 @@ config.lower_input_latency = true
 ---Defaults to true.
 ---@type boolean | { font: renderer.font, icon: string } | nil
 config.stonks = true
+
+---Specifies the dirmonitor backend to be used or nil
+---to use the first available one.
+---
+---Defaults to nil
+config.dirmonitor_backend = nil
 
 -- holds the plugins real config table
 local plugins_config = {}

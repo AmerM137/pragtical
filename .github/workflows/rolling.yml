@@ -12,7 +12,7 @@ permissions: write-all
 jobs:
   release:
     name: Create Release
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
       version: ${{ steps.tag.outputs.version }}
@@ -32,7 +32,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Create Release
         id: create_release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.2.2
         with:
           tag_name: ${{ steps.tag.outputs.version }}
           name: Pragtical ${{ steps.tag.outputs.version }}
@@ -62,13 +62,11 @@ jobs:
     strategy:
       matrix:
         config:
-          - compiler: default
-            arch: x86_64
-            container: ubuntu-20.04
-          - compiler: gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-            arch: aarch64
-            container: ubuntu-22.04
-    runs-on: ${{ matrix.config.container }}
+          - arch: x86_64
+            distro: ubuntu-22.04
+          - arch: aarch64
+            distro: ubuntu-22.04-arm
+    runs-on: ${{ matrix.config.distro }}
     env:
       CC: gcc
       CXX: g++
@@ -81,52 +79,24 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           echo "/usr/lib/ccache" >> "$GITHUB_PATH"
           echo "INSTALL_REF=${{ needs.release.outputs.version }}" >> "$GITHUB_ENV"
-          if [[ $(uname -m) != ${{ matrix.config.arch }} ]]; then
-            echo "ARCH=--cross-arch ${{ matrix.config.arch }}" >> "$GITHUB_ENV"
-          fi
       - name: Python Setup
         uses: actions/setup-python@v5
         with:
           python-version: 3.9
       - name: Update Packages
-        run: |
-          if [[ $(uname -m) = ${{ matrix.config.arch }} ]]; then
-            sudo apt-get update
-          else
-            url="http://ports.ubuntu.com/ubuntu-ports"
-            repos="main restricted universe multiverse"
-            echo "deb [arch=arm64] $url jammy $repos" > arm64.list
-            echo "deb [arch=arm64] $url jammy-updates $repos" >> arm64.list
-            echo "deb [arch=arm64] $url jammy-security $repos" >> arm64.list
-            echo "deb [arch=arm64] $url jammy-backports $repos" >> arm64.list
-            sudo mv arm64.list /etc/apt/sources.list.d/
-            sudo apt-get update
-            sudo dpkg --add-architecture arm64
-          fi
+        run: sudo apt-get update
       - name: Install Dependencies
         run: |
           sudo apt-get install -y ccache
-          if [[ $(uname -m) = ${{ matrix.config.arch }} ]]; then
-            bash scripts/install-dependencies.sh --debug
-          else
-            pip3 install meson
-            sudo apt-get install -y libfuse2 ninja-build
-            sudo apt-get install -y wayland-protocols:arm64 libsdl2-dev:arm64 libfreetype6:arm64
-          fi
-      - name: Install Cross Compiler
-        if: ${{ matrix.config.compiler != 'default' }}
-        run: sudo apt-get install -y ${{ matrix.config.compiler }}
+          bash scripts/install-dependencies.sh --debug
       - name: Build Portable
-        run: |
-          bash scripts/build.sh --debug --forcefallback --portable $ARCH
+        run: bash scripts/build.sh --debug --forcefallback --portable
       - name: Package Portables
-        run: |
-          bash scripts/package.sh --version ${INSTALL_REF} --debug --addons --binary $ARCH
+        run: bash scripts/package.sh --version ${INSTALL_REF} --debug --addons --binary
       - name: Build AppImages
-        run: |
-          bash scripts/appimage.sh --debug --static --addons --version ${INSTALL_REF} $ARCH
+        run: bash scripts/appimage.sh --debug --static --addons --version ${INSTALL_REF}
       - name: Upload Files
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.2.2
         with:
           tag_name: ${{ needs.release.outputs.version }}
           draft: false
@@ -180,7 +150,7 @@ jobs:
           path: |
             ${{ env.INSTALL_NAME }}.dmg
       - name: Upload Files
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.2.2
         with:
           tag_name: ${{ needs.release.outputs.version }}
           draft: false
@@ -234,7 +204,7 @@ jobs:
           bash --version
           bash scripts/make-universal-binaries.sh dmgs-normal "$INSTALL_BASE-universal"
       - name: Upload Files
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.2.2
         with:
           tag_name: ${{ needs.release.outputs.version }}
           draft: false
@@ -252,7 +222,7 @@ jobs:
   build_windows_msys2:
     name: Windows
     needs: release
-    runs-on: windows-2019
+    runs-on: windows-2022
     strategy:
       matrix:
         config:
@@ -300,7 +270,7 @@ jobs:
       - name: Build Installer
         run: bash scripts/innosetup/innosetup.sh --debug --version ${INSTALL_REF}
       - name: Upload Files
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.2.2
         with:
           tag_name: ${{ needs.release.outputs.version }}
           draft: false

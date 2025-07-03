@@ -7,6 +7,7 @@ local Object = require "core.object"
 
 local Highlighter = Object:extend()
 
+function Highlighter:__tostring() return "Highlighter" end
 
 function Highlighter:new(doc)
   self.doc = doc
@@ -131,6 +132,7 @@ end
 
 
 function Highlighter:get_line(idx)
+  if not self.doc then return {text="", tokens={"normal", ""}} end
   local line = self.lines[idx]
   if not line or line.text ~= self.doc:get_utf8_line(idx) then
     local prev = self.lines[idx - 1]
@@ -146,6 +148,5 @@ end
 function Highlighter:each_token(idx, scol)
   return tokenizer.each_token(self:get_line(idx).tokens, scol)
 end
-
 
 return Highlighter

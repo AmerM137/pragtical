@@ -11,6 +11,8 @@ local ListBox = require "widget.listbox"
 ---@field super widget
 local EmptyView = Widget:extend()
 
+function EmptyView:__tostring() return "EmptyView" end
+
 ---Font used to render the logo
 ---@type renderer.font
 local icon_huge_font
@@ -32,14 +34,14 @@ local buttons = {
   { name = "open_folder", icon = "d", cmd = "core:open-project-folder",
     label = "Open Project", tooltip = "Open a project in another instance"
   },
-  { name = "change_folder", icon = "d", cmd = "core:change-project-folder",
+  { name = "change_folder", icon = "s", cmd = "core:change-project-folder",
     label = "Change Project", tooltip = "Change main project of current instance"
   },
   { name = "find_file", icon = "L", cmd = "core:find-file",
     label = "Find File", tooltip = "Search for a file from current project"
   },
   { name = "run_command", icon = "B", cmd = "core:find-command",
-    label = "Run Command", tooltip = "Search for a command and run it"
+    label = "Run Command", tooltip = "Search for a command to run"
   },
   { name = "settings", icon = "P", cmd = "ui:settings",
     label = "Settings", tooltip = "Open the settings interface"
@@ -100,12 +102,14 @@ function EmptyView:new()
   end
 
   self.website = Button(self, "Website")
+  self.website:set_icon("G")
   self.website:set_tooltip("Visit the editor website")
   self.website.on_click = function(_, pressed)
     open_link("https://pragtical.dev")
   end
 
   self.docs = Button(self, "Documentation")
+  self.docs:set_icon("?")
   self.docs:set_tooltip("Visit the editor documentation")
   self.docs.on_click = function(_, pressed)
     open_link("https://pragtical.dev/docs/intro")
@@ -195,16 +199,14 @@ function EmptyView:draw()
   if not self.first_update then
     for _, button in ipairs(buttons) do
       self[button.name]:set_tooltip(
-        string.format(
-          "%s (%s)",
-          button.tooltip, keymap.get_binding(button.cmd) or ""
-        )
+        button.tooltip,
+        button.cmd
       )
     end
     self.plugin_manager_loaded = package.loaded["plugins.plugin_manager"]
     if self.plugin_manager_loaded then
       self.plugins:show()
-      self.plugins:set_icon("B")
+      self.plugins:set_icon("p")
       self.plugins:set_tooltip("Open the plugin manager")
       self.plugins.on_click = function(_, pressed)
         command.perform("plugin-manager:show")

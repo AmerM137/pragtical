@@ -9,6 +9,8 @@ local View = require "core.view"
 ---@class core.node : core.object
 local Node = Object:extend()
 
+function Node:__tostring() return "Node" end
+
 function Node:new(type)
   self.type = type or "leaf"
   self.position = { x = 0, y = 0 }
@@ -281,7 +283,9 @@ end
 function Node:should_show_tabs()
   if self.locked then return false end
   local dn = core.root_view.dragged_node
-  if #self.views > 1
+  if config.hide_tabs then
+    return false
+  elseif #self.views > 1
      or (dn and dn.dragging) then -- show tabs while dragging
     return true
   elseif config.always_show_tabs then
@@ -310,10 +314,11 @@ end
 
 
 function Node:tab_hovered_update(px, py)
-  local tab_index = self:get_tab_overlapping_point(px, py)
-  self.hovered_tab = tab_index
   self.hovered_close = 0
   self.hovered_scroll_button = 0
+  if not self:should_show_tabs() then self.hovered_tab = nil return end
+  local tab_index = self:get_tab_overlapping_point(px, py)
+  self.hovered_tab = tab_index
   if tab_index then
     local x, y, w, h = self:get_tab_rect(tab_index)
     local cx, cw = close_button_location(x, w)
@@ -721,6 +726,10 @@ function Node:resize(axis, value)
       if self.a:is_locked_resizable(axis) and self.b:is_locked_resizable(axis) then
         local rem_value = value - self.a.size[axis]
         if rem_value >= 0 then
+          if self.b.active_view.size[axis] <= 0 then
+            -- if 'b' not visible resize 'a' instead
+            return self.a.active_view:set_target_size(axis, value)
+          end
           return self.b.active_view:set_target_size(axis, rem_value)
         else
           self.b.active_view:set_target_size(axis, 0)

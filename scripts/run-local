@@ -27,8 +27,12 @@ while [[ "$#" -gt 0 ]]; do
     option_global=on
     ;;
     -*)
-    echo "error: unknown option \"$1\""
-    exit 1
+    if [ "${#pargs[@]}" = "0" ]; then
+      echo "error: unknown option \"$1\""
+      exit 1
+    else
+      pargs+=("$1")
+    fi
     ;;
     *)
     pargs+=("$1")
@@ -89,7 +93,7 @@ copy_pragtical_build () {
     if [ -d "$builddir/subprojects/ppm" ] && ls "$builddir"/subprojects/ppm/ppm.*; then
       cp -a "subprojects/ppm/plugins/plugin_manager" "$datadir/plugins"
       cp -a "$builddir"/subprojects/ppm/ppm.* "$datadir/plugins/plugin_manager/"
-    elif ls subprojects/ppm/ppm.*; then
+    elif ls subprojects/ppm/ppm.* | grep -v ppm.json; then
       cp -a "subprojects/ppm/plugins/plugin_manager" "$datadir/plugins"
       cp subprojects/ppm/ppm.* "$datadir/plugins/plugin_manager/"
     fi

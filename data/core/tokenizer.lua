@@ -2,7 +2,10 @@ local core = require "core"
 local syntax = require "core.syntax"
 local config = require "core.config"
 
+---Functionality to tokenize source code using syntax definitions.
+---@class core.tokenizer
 local tokenizer = {}
+
 local bad_patterns = {}
 
 local function push_token(t, type, text)
@@ -203,6 +206,7 @@ function tokenizer.tokenize(incoming_syntax, text, state, resume)
     local target, res = p.pattern or p.regex, { 1, offset - 1 }
     local p_idx = close and 2 or 1
     local code = type(target) == "table" and target[p_idx] or target
+    if p.disabled then return end
 
     if p.whole_line == nil then p.whole_line = { } end
     if p.whole_line[p_idx] == nil then

@@ -168,14 +168,14 @@ settings.add("General",
       label = "User Module",
       description = "Open your init.lua for customizations.",
       type = settings.type.BUTTON,
-      icon = "P",
+      icon = "F",
       on_click = "core:open-user-module"
     },
     {
       label = "Clear Fonts Cache",
       description = "Delete current font cache and regenerate a fresh one.",
       type = settings.type.BUTTON,
-      icon = "C",
+      icon = "T",
       on_click = function()
         if Fonts.cache_is_building() then
           MessageBox.warning(
@@ -279,7 +279,7 @@ settings.add("Graphics",
     },
     {
       label = "Animation Rate",
-      description = "The amount of time it takes for a transition to finish.",
+      description = "The speed of transitions, higher value means faster.",
       path = "animation_rate",
       type = settings.type.NUMBER,
       default = 1.0,
@@ -392,6 +392,13 @@ settings.add("User Interface",
       type = settings.type.NUMBER,
       default = 5,
       min = 1
+    },
+    {
+      label = "Hide Tabs",
+      description = "Always hide tabs even if multiple documents are open.",
+      path = "hide_tabs",
+      type = settings.type.TOGGLE,
+      default = false
     },
     {
       label = "Always Show Tabs",
@@ -602,7 +609,7 @@ settings.add("Editor",
       description = "Highlight the current line.",
       path = "highlight_current_line",
       type = settings.type.SELECTION,
-      default = true,
+      default = "no_selection",
       values = {
         {"Yes", true},
         {"No", false},
@@ -675,7 +682,7 @@ settings.add("Development",
       label = "Core Log",
       description = "Open the list of logged messages.",
       type = settings.type.BUTTON,
-      icon = "f",
+      icon = "l",
       on_click = "core:open-log"
     },
     {
@@ -742,8 +749,25 @@ settings.add("Status Bar",
   }
 )
 
+local dirmonitor_backends = {{"Auto", "auto"}}
+for _, backend in ipairs(dirmonitor.backends()) do
+  table.insert(dirmonitor_backends, {backend, backend})
+end
+
 settings.add("Advanced",
   {
+    {
+      label = "Directory Monitoring Backend",
+      description = "The backend to monitor for file changes (restart required).",
+      path = "dirmonitor_backend",
+      type = settings.type.SELECTION,
+      default = "auto",
+      values = dirmonitor_backends,
+      set_value = function(backend)
+        if backend == "auto" then return nil end
+        return backend
+      end
+    },
     {
       label = "Garbage Collector Pause",
       description = "How many times ram has to increase after last clean in order to reclean. Lower value makes GC more aggressive but may cause stuttering.",
@@ -958,6 +982,11 @@ end
 local function load_settings()
   local ok, t = pcall(dofile, USERDIR .. "/user_settings.lua")
   settings.config = ok and t.config or {}
+  -- do not wait for settings plugin to merge user settings and
+  -- prioritize this option to prevent plugins from using wrong backend
+  if settings.config.dirmonitor_backend then
+    config.dirmonitor_backend = settings.config.dirmonitor_backend
+  end
 end
 
 ---Save current config options into the USERDIR user_settings.lua
@@ -1022,14 +1051,11 @@ local function apply_keybinding(cmd, bindings, skip_save)
         style.text, cmd, ListBox.COLEND, style.dim, bindings_list
       }
     end
-  elseif
-    not skip_save
-    and
-    settings.config.custom_keybindings
-    and
-    settings.config.custom_keybindings[cmd]
-  then
-    settings.config.custom_keybindings[cmd] = nil
+  elseif not skip_save then
+    if not settings.config.custom_keybindings then
+      settings.config.custom_keybindings = {}
+    end
+    settings.config.custom_keybindings[cmd] = {}
     changed = true
   end
 
@@ -1064,6 +1090,11 @@ local function merge_font_settings(option, path, saved_value)
   local font_loaded = true
   for _, font in ipairs(saved_value.fonts) do
     local font_data = nil
+    if string.find(font.path, "{datadir}", 1, true) then
+      font.path = string.gsub(font.path, "{datadir}", DATADIR, 1)
+    elseif string.find(font.path, "{userdir}", 1, true) then
+      font.path = string.gsub(font.path, "{userdir}", USERDIR, 1)
+    end
     font_loaded = core.try(function()
       font_data = renderer.font.load(
         font.path, font_options.size * SCALE, font_options
@@ -1206,10 +1237,10 @@ function Settings:new()
   self.keybinds = self.notebook:add_pane("keybindings", "Keybindings")
   self.about = self.notebook:add_pane("about", "About")
 
-  self.notebook:set_pane_icon("core", "P")
-  self.notebook:set_pane_icon("colors", "W")
-  self.notebook:set_pane_icon("plugins", "B")
-  self.notebook:set_pane_icon("keybindings", "M")
+  self.notebook:set_pane_icon("core", "A")
+  self.notebook:set_pane_icon("colors", "E")
+  self.notebook:set_pane_icon("plugins", "p")
+  self.notebook:set_pane_icon("keybindings", "k")
   self.notebook:set_pane_icon("about", "i")
 
   self.core_sections = FoldingBook(self.core)
@@ -1254,7 +1285,7 @@ local function add_control(pane, option, plugin_name)
 
   if option.type == settings.type.NUMBER then
     ---@type widget.label
-    Label(pane, option.label .. ":")
+    Label(pane, option.label .. ":", true)
     ---@type widget.numberbox
     local number = NumberBox(pane, option_value, option.min, option.max, option.step)
     widget = number
@@ -1268,7 +1299,7 @@ local function add_control(pane, option, plugin_name)
 
   elseif option.type == settings.type.STRING then
     ---@type widget.label
-    Label(pane, option.label .. ":")
+    Label(pane, option.label .. ":", true)
     ---@type widget.textbox
     local string = TextBox(pane, option_value or "")
     widget = string
@@ -1276,7 +1307,7 @@ local function add_control(pane, option, plugin_name)
 
   elseif option.type == settings.type.SELECTION then
     ---@type widget.label
-    Label(pane, option.label .. ":")
+    Label(pane, option.label .. ":", true)
     ---@type widget.selectbox
     local select = SelectBox(pane)
     for _, data in pairs(option.values) do
@@ -1312,7 +1343,7 @@ local function add_control(pane, option, plugin_name)
 
   elseif option.type == settings.type.LIST_STRINGS then
     ---@type widget.label
-    Label(pane, option.label .. ":")
+    Label(pane, option.label .. ":", true)
     ---@type widget.itemslist
     local list = ItemsList(pane)
     if type(option_value) == "table" then
@@ -1334,7 +1365,7 @@ local function add_control(pane, option, plugin_name)
       end
     end
      ---@type widget.label
-    Label(pane, option.label .. ":")
+    Label(pane, option.label .. ":", true)
     ---@type widget.fontslist
     local fonts = FontsList(pane)
     if type(option_value) == "table" then
@@ -1357,7 +1388,7 @@ local function add_control(pane, option, plugin_name)
 
   elseif option.type == settings.type.FILE then
     ---@type widget.label
-    Label(pane, option.label .. ":")
+    Label(pane, option.label .. ":", true)
     ---@type widget.filepicker
     local file = FilePicker(pane, option_value or "")
     if option.exists then
@@ -1371,7 +1402,7 @@ local function add_control(pane, option, plugin_name)
 
   elseif option.type == settings.type.DIRECTORY then
     ---@type widget.label
-    Label(pane, option.label .. ":")
+    Label(pane, option.label .. ":", true)
     ---@type widget.filepicker
     local file = FilePicker(pane, option_value or "")
     if option.exists then
@@ -1385,7 +1416,7 @@ local function add_control(pane, option, plugin_name)
 
   elseif option.type == settings.type.COLOR then
     ---@type widget.label
-    Label(pane, option.label .. ":")
+    Label(pane, option.label .. ":", true)
     ---@type widget.colorpicker
     local color = ColorPicker(pane, option_value)
     widget = color
@@ -1421,6 +1452,17 @@ local function add_control(pane, option, plugin_name)
         else
           set_config_value(config, path, renderer.font.group(fonts))
         end
+        fonts = {}
+        for _, font in ipairs(value.fonts) do
+          local font_path = font.path
+          if string.find(font.path, DATADIR, 1, true) then
+            font_path = string.gsub(font.path, DATADIR, "{datadir}", 1)
+          elseif string.find(font.path, USERDIR, 1, true) then
+            font_path = string.gsub(font.path, USERDIR, "{userdir}", 1)
+          end
+          table.insert(fonts, {name = font.name, path = font_path})
+        end
+        value.fonts = fonts
       else
         set_config_value(config, path, value)
       end
@@ -1444,7 +1486,7 @@ local function add_control(pane, option, plugin_name)
       default = string.format("(default: %s)", option.default)
     end
      ---@type widget.label
-    local description = Label(pane, text .. default)
+    local description = Label(pane, text .. default, true)
     description.desc = true
   end
 end
@@ -1502,11 +1544,13 @@ function Settings:load_color_settings()
 
   local colors = get_installed_colors()
 
+  ---@type widget.textbox
+  local textbox = TextBox(self.colors, "", "filter colors...")
+
   ---@type widget.listbox
   local listbox = ListBox(self.colors)
 
   listbox.border.width = 0
-  listbox:enable_expand(true)
 
   listbox:add_column("Theme")
   listbox:add_column("Colors")
@@ -1523,10 +1567,22 @@ function Settings:load_color_settings()
     }, {name = name, colors = details.colors})
   end
 
+  function textbox:on_change(value)
+    listbox:filter(value)
+  end
+
   function listbox:on_row_click(idx, data)
     core.reload_module("colors." .. data.name)
     settings.config.theme = data.name
     save_settings()
+  end
+
+  ---@param self widget
+  function self.colors:update_positions()
+    textbox:set_position(0, 0)
+    textbox:set_size(self:get_width() - self.border.width * 2)
+    listbox:set_position(0, textbox:get_bottom())
+    listbox:set_size(self:get_width() - self.border.width * 2, self:get_height() - textbox:get_height())
   end
 end
 
@@ -1631,7 +1687,8 @@ function Settings:load_plugin_settings()
   -- requires earlier access to startup process
   Label(
     pane,
-    "Notice: disabling plugins will not take effect until next restart"
+    "Notice: disabling plugins will not take effect until next restart",
+    true
   )
 
   Line(pane, 2, 10)
@@ -1708,35 +1765,10 @@ function keymap_dialog:on_save(bindings)
 end
 
 function keymap_dialog:on_reset()
-  local default_keys = settings.default_keybindings[self.command]
-  local current_keys = { keymap.get_binding(self.command) }
-
-  for _, binding in ipairs(current_keys) do
-    keymap.unbind(binding, self.command)
-  end
-
-  if default_keys and #default_keys > 0 then
-    local cmd = self.command
-    if not settings.config.custom_keybindings then
-      settings.config.custom_keybindings = {}
-      settings.config.custom_keybindings[cmd] = {}
-    elseif not settings.config.custom_keybindings[cmd] then
-      settings.config.custom_keybindings[cmd] = {}
-    end
-    local shortcuts = ""
-    for _, binding in ipairs(default_keys) do
-      keymap.add({[binding] = cmd})
-      shortcuts = shortcuts .. binding .. "\n"
-      table.insert(settings.config.custom_keybindings[cmd], binding)
-    end
-    local bindings_list = shortcuts:gsub("\n$", "")
-    self.listbox:set_row(self.row_id, {
-      style.text, cmd, ListBox.COLEND, style.dim, bindings_list
-    })
-  else
-    self.listbox:set_row(self.row_id, {
-      style.text, self.command, ListBox.COLEND, style.dim, "none"
-    })
+  local default_bindings = settings.default_keybindings[self.command]
+  local row_value = apply_keybinding(self.command, default_bindings, true)
+  if row_value then
+    self.listbox:set_row(self.row_id, row_value)
   end
   if
     settings.config.custom_keybindings
@@ -1821,11 +1853,12 @@ function Settings:setup_about()
   local title = Label(self.about, "Pragtical")
   title.font = "big_font"
   ---@type widget.label
-  local version = Label(self.about, "version " .. VERSION)
+  local version = Label(self.about, "version " .. VERSION, true)
   ---@type widget.label
   local description = Label(
     self.about,
-    "A lightweight text editor written in Lua, adapted from lite."
+    "A lightweight text editor written in Lua, adapted from lite.",
+    true
   )
 
   local function open_link(link)
@@ -1842,8 +1875,9 @@ function Settings:setup_about()
 
   ---@type widget.button
   local button = Button(self.about, "Visit Website")
-  button:set_tooltip("Open https://pragtical.github.io/")
-  function button:on_click() open_link("https://pragtical.github.io/") end
+  button:set_icon("G")
+  button:set_tooltip("Open https://pragtical.dev/")
+  function button:on_click() open_link("https://pragtical.dev/") end
 
   ---@type widget.listbox
   local contributors = ListBox(self.about)
@@ -1968,6 +2002,10 @@ function Settings:update()
         end
       end
     end
+  end
+
+  if self.colors:is_visible() then
+    self.colors:update_positions()
   end
 
   if self.keybinds:is_visible() then
