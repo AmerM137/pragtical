@@ -12,12 +12,13 @@ local config = {}
 ---@type number
 config.fps = 60
 
----Draw the current FPS, the rendering speed in FPS possible and the maximum
----time that a coroutine has to run without affecting the rendering
----process plus the total amount of running coroutines.
+---Draw the current FPS, the average frame time, and the maximum time that
+---coroutines have to run per frame without affecting the rendering process
+---plus the total amount of running coroutines. If set to 'uncapped' the system
+---will draw at the maximum speed per second for benchmarking purposes.
 ---
 ---Defaults to false.
----@type boolean
+---@type boolean | "uncapped"
 config.draw_stats = false
 
 ---Maximum number of log items that will be stored.
@@ -289,8 +290,8 @@ config.log_slow_threads = false
 ---less for system events when events are received. Disable this option to
 ---reduce CPU usage.
 ---
----Defaults to true.
-config.lower_input_latency = true
+---Defaults to false.
+config.lower_input_latency = false
 
 ---Increases the performance of the editor and its user.
 ---Do not change this unless you know what you are doing.
