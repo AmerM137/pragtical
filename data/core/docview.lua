@@ -167,6 +167,37 @@ function DocView:get_line_text_y_offset()
 end
 
 
+---Get an estimated range of visible columns. It is an estimate because fonts
+---and their fallbacks may not be monospaced or may differ in size. This
+---function provides a way of optimization on really long lines for plugins
+---that perform drawing operations on them.
+---
+---It is good practice to set the `extra_cols` parameter to a value that leaves
+---room for the differences in font sizes.
+---@param line integer
+---@param extra_cols? integer Amount of columns to deduce on col1 and include on col2 (default: 100)
+---@return integer col1
+---@return integer col2
+function DocView:get_visible_cols_range(line, extra_cols)
+  extra_cols = extra_cols or 100
+  local gw = self:get_gutter_width()
+  local line_x = self.position.x + gw
+  local x = -self.scroll.x + self.position.x + gw
+
+  local non_visible_x = common.clamp(line_x - x, 0, math.huge)
+  local char_width = self:get_font():get_width("W")
+  local non_visible_chars_left = math.floor(non_visible_x / char_width)
+  local visible_chars_right = math.floor((self.size.x - gw) / char_width)
+  local line_len = #self.doc.lines[line]
+
+  if non_visible_chars_left > line_len then return 0, 0 end
+
+  return
+    math.max(1, non_visible_chars_left - extra_cols),
+    math.min(line_len, non_visible_chars_left + visible_chars_right + extra_cols)
+end
+
+
 function DocView:get_visible_line_range()
   local x, y, x2, y2 = self:get_content_bounds()
   local lh = self:get_line_height()
@@ -518,7 +549,7 @@ function DocView:draw_line_text(line, x, y)
   local _, indent_size = self.doc:get_indent_info()
   local start_tx = tx
   for tidx, type, text in self.doc.highlighter:each_token(line) do
-    local color = style.syntax[type]
+    local color = style.syntax[type] or style.syntax["normal"]
     local font = style.syntax_fonts[type] or default_font
     if font ~= default_font then font:set_tab_size(indent_size) end
     -- do not render newline, fixes issue #1164

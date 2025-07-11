@@ -40,6 +40,7 @@ local Fonts = require "widget.fonts"
 local FilePicker = require "widget.filepicker"
 local ColorPicker = require "widget.colorpicker"
 local MessageBox = require "widget.messagebox"
+local Container = require "widget.container"
 
 ---@class plugins.settings
 local settings = {}
@@ -92,9 +93,9 @@ settings.type = {
 ---@field public default string | number | boolean | table<integer, string> | table<integer, integer>
 ---Used for NUMBER to indicate the minimum number allowed
 ---@field public min number
----Used for NUMBER to indiciate the maximum number allowed
+---Used for NUMBER to indicate the maximum number allowed
 ---@field public max number
----Used for NUMBER to indiciate the increment/decrement amount
+---Used for NUMBER to indicate the increment/decrement amount
 ---@field public step number
 ---Used in a SELECTION to provide the list of valid options
 ---@field public values table
@@ -600,7 +601,7 @@ settings.add("Editor",
       path = "line_height",
       type = settings.type.NUMBER,
       default = 1.2,
-      min = 1.0,
+      min = 0.8,
       max = 3.0,
       step = 0.1
     },
@@ -1700,6 +1701,8 @@ function Settings:load_plugin_settings()
     pane = pane.container
   end
 
+  -- TODO: improve how the plugin enable/disable toggles look
+
   -- requires earlier access to startup process
   Label(
     pane,
@@ -1708,6 +1711,10 @@ function Settings:load_plugin_settings()
   )
 
   Line(pane, 2, 10)
+
+  local container = Container(pane, nil, Container.alignment.LEFT)
+  container:set_spacing(25)
+  container:set_padding({x = 0, y = 0})
 
   local plugins = get_installed_plugins()
   for _, plugin in ipairs(plugins) do
@@ -1735,8 +1742,19 @@ function Settings:load_plugin_settings()
 
       local this = self
 
+      local name
+      if
+        config.plugins[plugin]
+        and config.plugins[plugin].config_spec
+        and config.plugins[plugin].config_spec.name
+      then
+        name = config.plugins[plugin].config_spec.name
+      else
+        name = prettify_name(plugin)
+      end
+
       ---@type widget.toggle
-      local toggle = Toggle(pane, prettify_name(plugin), enabled)
+      local toggle = Toggle(container, name, enabled)
       function toggle:on_change(value)
         if value then
           this:enable_plugin(plugin)
@@ -2004,14 +2022,18 @@ function Settings:update()
               (child:is(Label) and child.desc)
             then
               y = prev_child:get_bottom() + (10 * SCALE)
-            else
+            elseif not child:is(Line) then
               y = prev_child:get_bottom() + (30 * SCALE)
             end
           end
           if child:is(Line) then
             x = 0
-          elseif child:is(ItemsList) or child:is(FilePicker) or child:is(TextBox) then
-            child:set_size(pane.container:get_width() - 20, child.size.y)
+          elseif
+            child:is(ItemsList) or child:is(FilePicker)
+            or
+            child:is(TextBox) or child:is(Container)
+          then
+            child:set_size(pane.container:get_width() - 20)
           end
           child:set_position(x, y)
           prev_child = child
