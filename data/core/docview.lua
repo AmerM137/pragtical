@@ -145,7 +145,11 @@ end
 
 function DocView:get_gutter_width()
   local padding = style.padding.x * 2
-  return self:get_font():get_width(#self.doc.lines) + padding, padding
+  -- return self:get_font():get_width(#self.doc.lines) + padding, padding
+  if config.show_linenumbers then
+    return self:get_font():get_width(#self.doc.lines) + padding, padding
+  end
+  return 15, 0
 end
 
 
@@ -707,7 +711,10 @@ function DocView:draw_line_gutter(line, x, y, width)
   end
   x = x + style.padding.x
   local lh = self:get_line_height()
-  common.draw_text(self:get_font(), color, line, "right", x, y, width, lh)
+  -- common.draw_text(self:get_font(), color, line, "right", x, y, width, lh)
+  if config.show_linenumbers then
+    common.draw_text(self:get_font(), color, line, "right", x, y, width, lh)
+  end
   return lh
 end
 
