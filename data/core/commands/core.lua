@@ -43,6 +43,10 @@ command.add(nil, {
     config.hide_tabs = not config.hide_tabs
   end,
 
+  ["core:toggle-line-numbers"] = function()
+    config.show_line_numbers = not config.show_line_numbers
+  end,
+
   ["core:toggle-fullscreen"] = function()
     local current_mode = system.get_window_mode(core.window)
     local fullscreen = current_mode == "fullscreen"
@@ -114,7 +118,7 @@ command.add(nil, {
     })
   end,
 
-  ["core:open-file"] = function()
+  ["core:open-file"] = function(label, selection_callback)
     local view = core.active_view
     local text, root_dir, filename = "", core.root_project().path, ""
     if view.doc and view.doc.abs_filename then
@@ -126,10 +130,14 @@ command.add(nil, {
         root_dir = dirname
       end
     end
-    core.command_view:enter("Open File", {
+    core.command_view:enter(label or "Open File", {
       text = text,
       submit = function(text)
-        core.root_view:open_doc(core.open_doc(filename))
+        if not selection_callback then
+          core.root_view:open_doc(core.open_doc(filename))
+        else
+          selection_callback(filename)
+        end
       end,
       suggest = function(text)
         return common.home_encode_list(
