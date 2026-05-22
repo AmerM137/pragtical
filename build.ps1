@@ -1,30 +1,39 @@
 # Build script for Pragtical
-# Usage: .\build.ps1 [buildtype] [clean]
+# Usage: .\build.ps1 [buildtype] [clean] [-h]
 #   buildtype:    release (default), debugoptimized
 #   clean|--clean: remove build/ and pragtical/ and exit
+#   -h|--help:    show usage and exit
 
 $buildtype = "release"
 $clean = $false
 
 foreach ($arg in $args) {
-    if ($arg -eq "--clean" -or $arg -eq "clean") { $clean = $true }
+    if ($arg -eq "-h" -or $arg -eq "--help") {
+        Write-Host "Usage: .\build.ps1 [buildtype] [clean] [-h]"
+        Write-Host ""
+        Write-Host "  buildtype       Build type to pass to Meson (default: release)"
+        Write-Host "                  Examples: release, debugoptimized, debug"
+        Write-Host "  clean, --clean  Remove build/ and pragtical/ directories and exit"
+        Write-Host "  -h, --help      Show this help message and exit"
+        exit 0
+    } elseif ($arg -eq "--clean" -or $arg -eq "clean") { $clean = $true }
     elseif ($arg -ne "") { $buildtype = $arg }
 }
 
 if ($clean) {
-    Write-Host "Cleaning build artifacts..." -ForegroundColor Yellow
+    Write-Host "Cleaning build artifacts..."
     if (Test-Path "build")      { Remove-Item -Recurse -Force "build" }
     if (Test-Path "pragtical")  { Remove-Item -Recurse -Force "pragtical" }
-    Write-Host "Done." -ForegroundColor Green
+    Write-Host "Done."
     exit 0
 }
 
-Write-Host "Building with buildtype=$buildtype" -ForegroundColor Cyan
+Write-Host "Building with buildtype=$buildtype"
 
 if (-not (Test-Path "build\build.ninja")) {
-    meson setup --wrap-mode=forcefallback --buildtype=$buildtype -Dppm=false build
+    meson setup --wrap-mode=forcefallback --buildtype=$buildtype build
 } else {
-    Write-Host "Build directory exists, skipping setup..." -ForegroundColor DarkGray
+    Write-Host "Build directory exists, skipping setup..."
 }
 meson compile -C build
 meson install -C build --skip-subprojects="freetype2,pcre2,sdl3" --destdir ../pragtical/
@@ -32,4 +41,4 @@ meson install -C build --skip-subprojects="freetype2,pcre2,sdl3" --destdir ../pr
 Remove-Item -Recurse -Force -Path "pragtical/lib","pragtical/include","pragtical/doc" -ErrorAction SilentlyContinue
 Remove-Item -Force "pragtical/user/README.md" -ErrorAction SilentlyContinue
 
-Write-Host "Build complete! Output in pragtical/" -ForegroundColor Green
+Write-Host "Build complete! Output in pragtical/"

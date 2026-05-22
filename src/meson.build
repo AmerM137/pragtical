@@ -217,7 +217,7 @@ executable('pragtical',
     win_subsystem: 'windows',
 )
 
-if host_machine.system() == 'windows'
+if host_machine.system() == 'windows' and get_option('repl')
     # MSVC generates pragtical.lib/.exp as side effects of linking. Without a
     # distinct implib name, the .exe and .com builds race to write the same
     # files in parallel and one fails with LNK1104.
