@@ -1426,12 +1426,13 @@ local function merge_settings()
     end
   end
 
-  -- apply custom keybindings
-  if settings.config.custom_keybindings then
-    for cmd, bindings in pairs(settings.config.custom_keybindings) do
-      apply_keybinding(cmd, bindings, true)
-    end
-  end
+  -- Disabled locally: do not let the settings plugin rewrite keybindings
+  -- from its saved custom_keybindings state on startup.
+  -- if settings.config.custom_keybindings then
+  --   for cmd, bindings in pairs(settings.config.custom_keybindings) do
+  --     apply_keybinding(cmd, bindings, true)
+  --   end
+  -- end
 end
 
 ---Scan all plugins to check if they define a config_spec and load it.
@@ -2569,9 +2570,10 @@ command.add(nil, {
   end,
 })
 
-keymap.add {
-  ["ctrl+alt+p"] = "ui:settings"
-}
+-- Disabled locally: do not register settings-plugin keybindings.
+-- keymap.add {
+--   ["ctrl+alt+p"] = "ui:settings"
+-- }
 
 --------------------------------------------------------------------------------
 -- Overwrite toolbar preferences command to open the settings gui

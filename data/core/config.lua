@@ -311,6 +311,17 @@ config.blink_period = 1.2
 ---@type boolean
 config.disable_blink = false
 
+---@alias config.caretshape
+---| "block"
+---| "line"
+
+---Controls the caret shape used in normal insert mode.
+---Overwrite mode keeps its existing cursor rendering.
+---
+---Defaults to "block".
+---@type config.caretshape
+config.caret_shape = "block"
+
 ---Draws whitespaces as dots.
 ---This option is deprecated.
 ---Please use the drawwhitespace plugin instead.

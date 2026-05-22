@@ -852,12 +852,34 @@ end
 ---@param line integer Line number (for overwrite mode char width)
 ---@param col integer Column number (for overwrite mode char width)
 function DocView:draw_caret(x, y, line, col)
+  local font = self:get_font()
   local lh = self:get_line_height()
   if self.doc.overwrite then
-    local w = self:get_font():get_width(self.doc:get_char(line, col))
+    local w = font:get_width(" ")
     renderer.draw_rect(x, y + lh, w, style.caret_width * 2, style.caret)
   else
-    renderer.draw_rect(x, y, style.caret_width, lh, style.caret)
+    if config.caret_shape == "line" then
+      renderer.draw_rect(x, y, style.caret_width, lh, style.caret)
+      return
+    end
+
+    local char = self.doc:get_char(line, col)
+    local draw_char = char ~= "\n"
+    if not draw_char then char = " " end
+    local w = math.ceil(font:get_width(" "))
+    renderer.draw_rect(x, y, w, lh, style.caret)
+
+    if draw_char then
+      core.push_clip_rect(x, y, w, lh)
+      renderer.draw_text(
+        font,
+        char,
+        x,
+        y + self:get_line_text_y_offset(),
+        style.background
+      )
+      core.pop_clip_rect()
+    end
   end
 end
 

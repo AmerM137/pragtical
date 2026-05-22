@@ -400,6 +400,15 @@ function CommandView:draw_line_highlight()
 end
 
 
+---Always draw a line caret regardless of config.caret_shape.
+---@param x number Screen x coordinate
+---@param y number Screen y coordinate
+function CommandView:draw_caret(x, y)
+  local lh = self:get_line_height()
+  renderer.draw_rect(x, y, style.caret_width, lh, style.caret)
+end
+
+
 ---Draw the label gutter with animated brightness.
 ---@param idx integer Line index (unused)
 ---@param x number Gutter x position
