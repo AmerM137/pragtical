@@ -9,6 +9,6 @@ option('extra_colors', type : 'boolean', value : true, description: 'Include add
 option('extra_languages', type : 'boolean', value : false, description: 'Include additional language plugins')
 option('ppm', type : 'boolean', value : false, description: 'Include the plugin manager')
 option('jit', type : 'boolean', value : true, description: 'Use luajit')
-option('repl', type : 'boolean', value : false, description: 'Build the pragtical.com REPL executable (Windows only)')
+option('repl', type : 'boolean', value : true, description: 'Build the pragtical.com REPL executable (Windows only)')
 option('repl_history', type : 'boolean', value : false, description: 'Enable history and completion support on REPL')
 option('net', type : 'boolean', value : false, description: 'Enable networking support using SDL3_net and mbedtls')
