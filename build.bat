@@ -59,4 +59,11 @@ if exist "pragtical\include" rd /s /q "pragtical\include"
 if exist "pragtical\doc" rd /s /q "pragtical\doc"
 if exist "pragtical\user\README.md" del /q "pragtical\user\README.md"
 
+:: Remove unwanted plugins
+if exist "pragtical\data\plugins\quote.lua" del /q "pragtical\data\plugins\quote.lua"
+if exist "pragtical\data\plugins\reflow.lua" del /q "pragtical\data\plugins\reflow.lua"
+if exist "pragtical\data\plugins\macro.lua" del /q "pragtical\data\plugins\macro.lua"
+if exist "pragtical\data\plugins\tabularize.lua" del /q "pragtical\data\plugins\tabularize.lua"
+if exist "pragtical\data\plugins\language_xml.lua" del /q "pragtical\data\plugins\language_xml.lua"
+
 echo Build complete! Output in pragtical/

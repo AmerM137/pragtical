@@ -41,4 +41,7 @@ meson install -C build --skip-subprojects="freetype2,pcre2,sdl3" --destdir ../pr
 Remove-Item -Recurse -Force -Path "pragtical/lib","pragtical/include","pragtical/doc" -ErrorAction SilentlyContinue
 Remove-Item -Force "pragtical/user/README.md" -ErrorAction SilentlyContinue
 
+# Remove unwanted plugins
+Remove-Item -Force "pragtical/data/plugins/quote.lua","pragtical/data/plugins/reflow.lua","pragtical/data/plugins/macro.lua","pragtical/data/plugins/tabularize.lua","pragtical/data/plugins/language_xml.lua" -ErrorAction SilentlyContinue
+
 Write-Host "Build complete! Output in pragtical/"
