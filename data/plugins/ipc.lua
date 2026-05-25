@@ -235,7 +235,7 @@ function IPC:start()
 
     self:update_status()
 
-    local wait_time = 0.25
+    local wait_time = 0.05
 
     self.coroutine_key = core.add_background_thread(function()
       coroutine.yield(wait_time)
