@@ -1,12 +1,17 @@
 -- mod-version:3
+-- 2026-06-02 - Note for Amer
+-- Simplified this Python highlighter to prioritize stable, conventional syntax
+-- coloring over advanced signature and annotation parsing. Removed fragile
+-- stateful rules that could leak docstring-like highlighting into later lines,
+-- tightened quote handling around triple-quoted strings, and dropped unused
+-- workaround/dead parsing code.
 local syntax = require "core.syntax"
 
 local function table_merge(a, b)
-    local t = {}
-    for _, v in pairs(a) do table.insert(t, v) end
-    for _, v in pairs(b) do table.insert(t, v) end
-
-    return t
+  local t = {}
+  for _, v in ipairs(a) do table.insert(t, v) end
+  for _, v in ipairs(b) do table.insert(t, v) end
+  return t
 end
 
 
@@ -53,13 +58,27 @@ local python_symbols = {
   ["False"]    = "literal",
 }
 
+local python_fexpr = {
+  patterns = {
+    { pattern = { '"', '"', '\\' }, type = "string" },
+    { pattern = { "'", "'", '\\' }, type = "string" },
+    { pattern = "%d+[%d%.eE_]*", type = "number" },
+    { pattern = "0[xboXBO][%da-fA-F_]+", type = "number" },
+    { pattern = "[%+%-=/%*%^%%<>!~|&:,%.%[%]()%?]", type = "operator" },
+    { pattern = "[%a_][%w_]*%f[(]", type = "function" },
+    { pattern = "[%a_][%w_]*", type = "symbol" },
+  },
+  symbols = python_symbols
+}
 
 local python_fstring = {
   patterns = {
     { pattern = "\\.", type = "string" },
-    { pattern = '[^"\\{}\']+', type = "string" }
+    { pattern = "{{", type = "string" },
+    { pattern = "}}", type = "string" },
+    { pattern = { "{", "}" }, type = "normal", syntax = python_fexpr },
+    { pattern = "[^\\{}\"']+", type = "string" },
   },
-
   symbols = {}
 }
 
@@ -74,13 +93,8 @@ local python_patterns = {
   { pattern = { '"', '"', '\\' }, type = "string" },
   { pattern = { "'", "'", '\\' }, type = "string" },
 
-  { pattern = { 'f"', '"', "\\" },
-    type = "string", syntax = python_fstring
-  },
-  { pattern = { "f'", "'", "\\" },
-    type = "string",
-    syntax = python_fstring
-  },
+  { pattern = { 'f"', '"', "\\" }, type = "string", syntax = python_fstring },
+  { pattern = { "f'", "'", "\\" }, type = "string", syntax = python_fstring },
 
   { pattern = "%d+[%d%.eE_]*", type = "number" },
   { pattern = "0[xboXBO][%da-fA-F_]+", type = "number" },
@@ -94,146 +108,17 @@ local python_patterns = {
 }
 
 
-local python_type = {
-  patterns = {
-    { pattern = "|", type = "operator" },
-    { pattern = "[%w_]+", type = "keyword2" },
-    { pattern = "[%a_][%w_]+", type = "symbol" },
-  },
-
-  symbols = {
-    ["None"] = "literal"
-  }
-}
-
--- Add this line after in order for the recursion to work.
--- Makes sure that the square brackets are well balanced when capturing the syntax
--- (in order to make something like this work: Tuple[Tuple[int, str], float])
-table.insert(
-  python_type.patterns, 1,
-  { pattern = { "%[", "%]" }, type = "normal", syntax = python_type }
-)
-
-
--- For things like this_list = other_list[a:b:c]
-local not_python_type = {
-  patterns = python_patterns,
-  symbols = python_symbols
-}
-
-table.insert(
-  not_python_type.patterns, 1,
-  { pattern = { "%[", "%]" }, type = "normal", syntax = not_python_type }
-)
-table.insert(
-  not_python_type.patterns, 1,
-  { pattern = { "{",  "}"  }, type = "normal", syntax = not_python_type }
-)
-table.insert(
-  python_fstring.patterns, 1,
-  { pattern = { "{",  "}"  }, type = "normal", syntax = not_python_type }
-)
-
-
-local python_func = {
-  patterns = table_merge({
-
-    { pattern = { "->", "%f[:]" },
-      type = "operator",
-      syntax = python_type
-    },
-    { pattern = { ":()%s*'", "()'" },
-      type = { "normal", "string" },
-      syntax = python_type
-    },
-    { pattern = { ':()%s*"', '()"' },
-      type = { "normal", "string" },
-      syntax = python_type
-    },
-    { pattern = { ":%s*%f[%a]", "%f[^%[%]%w_| \t]" }, type = "normal", syntax = python_type },
-
-  }, python_patterns),
-
-  symbols = python_symbols
-}
-
-table.insert(
-  python_func.patterns, 1,
-  { pattern = { "%(", "%)" }, type = "normal", syntax = python_func }
-)
-
-
 syntax.add {
   name = "Python",
   files = { "%.py$", "%.pyw$", "%.rpy$", "%.pyi$" },
   headers = "^#!.*[ /]python",
   comment = "#",
-  block_comment = { '"""', '"""' },
 
   patterns = table_merge({
-
-    { pattern = "#.*", type = "comment" },
-    { pattern = { '^%s*"""', '"""' }, type = "comment" },
-
-    { pattern = { "%[", "%]" }, type = "normal", syntax = not_python_type },
-    { pattern = { "{", "}"  }, type = "normal", syntax = not_python_type },
-
-    -- this and the following prevent one-liner highlight bugs
-    { pattern = { "^%s*()def%f[%s]", ":()%s*$" },
-      type = { "normal", "normal" },
-      syntax = python_func
-    },
-
-    { pattern = { "^%s*()for%f[%s]", ":()%s*$" },
-      type = { "normal", "normal" },
-      syntax = not_python_type
-    },
-    { pattern = { "^%s*()if%f[%s]", ":()%s*$" },
-      type = { "normal", "normal" },
-      syntax = not_python_type
-    },
-    { pattern = { "^%s*()elif%f[%s]", ":()%s*$" },
-      type = { "normal", "normal" },
-      syntax = not_python_type
-    },
-    { pattern = { "^%s*()while%f[%s]", ":()%s*$" },
-      type = { "normal", "normal" },
-      syntax = not_python_type
-    },
-    { pattern = { "^%s*()match%f[%s]", ":()%s*$" },
-      type = { "normal", "normal" },
-      syntax = not_python_type },
-    { pattern = { "^%s*()case%f[%s]", ":()%s*$" },
-      type = { "normal", "normal" },
-      syntax = not_python_type
-    },
-    { pattern = { "^%s*()except%f[%s]", ":()%s*$" },
-      type = { "normal", "normal" },
-      syntax = not_python_type
-    },
-
-    { pattern = "else():", type = { "keyword", "normal" } },
-    { pattern = "try():", type = { "keyword", "normal" } },
-
-    { pattern = "lambda()%s.+:", type = { "keyword", "normal" } },
+    { pattern = "def%s+()[%a_][%w_]*", type = { "keyword", "function" } },
     { pattern = "class%s+()[%a_][%w_]+().*:",
       type = { "keyword", "keyword2", "normal" }
     },
-
-    -- single quote forward type declarations eg: variable_name: 'type1 | type2'
-    { pattern = { ":()%s*'", "()'" },
-      type = { "normal", "string" },
-      syntax = python_type
-    },
-
-    -- double quote forward type declarations eg: variable_name: "type1 | type2"
-    { pattern = { ':()%s*"', '()"' },
-      type = { "normal", "string" },
-      syntax = python_type
-    },
-
-    -- type declarations eg: variable_name: type1 | type2
-    { pattern = { ":%s*%f[%a]", "%f[^%[%]%w_| \t]" }, type = "normal", syntax = python_type },
 
   }, python_patterns),
 
