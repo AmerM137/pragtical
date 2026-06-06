@@ -11,4 +11,4 @@ option('ppm', type : 'boolean', value : false, description: 'Include the plugin 
 option('jit', type : 'boolean', value : true, description: 'Use luajit')
 option('repl', type : 'boolean', value : true, description: 'Build the pragtical.com REPL executable (Windows only)')
 option('repl_history', type : 'boolean', value : false, description: 'Enable history and completion support on REPL')
-option('net', type : 'boolean', value : false, description: 'Enable networking support using SDL3_net and mbedtls')
+option('net', type : 'boolean', value : true, description: 'Enable networking support using SDL3_net and mbedtls')
