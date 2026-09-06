@@ -13,7 +13,7 @@ syntax.add {
   files = {
     "%.h$", "%.inl$", "%.cpp$", "%.cc$", "%.C$", "%.cxx$",
     "%.c++$", "%.hh$", "%.H$", "%.hxx$", "%.hpp$", "%.h++$",
-    "%.cu$", "%.ino$"
+    "%.ino$"
   },
   comment = "//",
   block_comment = { "/*", "*/" },
