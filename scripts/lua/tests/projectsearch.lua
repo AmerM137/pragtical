@@ -19,7 +19,7 @@ end
 local function collect_worker_results(tid, workers)
   local files = {}
   for id = 1, workers do
-    local channel = thread.get_channel("projectsearch_results"..tid..id)
+    local channel = thread.get_channel("projectsearch_results"..tid..":"..id)
     local value = channel:first()
     while value ~= nil do
       if type(value) == "table" then
@@ -57,9 +57,11 @@ test.describe("projectsearch", function()
       { path = context.project_a, name = "alpha" },
       { path = context.project_b, name = "beta" }
     }
+    context.old_thread_create = thread.create
   end)
 
   test.after_each(function(context)
+    thread.create = context.old_thread_create
     core.projects = context.old_projects
     if context.temp_root and system.get_file_info(context.temp_root) then
       local ok, err = common.rm(context.temp_root, true)
@@ -129,6 +131,49 @@ test.describe("projectsearch", function()
     test.equal(files[1].lines[1][2], 1)
     test.equal(files[1].lines[1][3][1].col1, 1)
     test.equal(files[1].lines[1][3][1].col2, 6)
+  end)
+
+  test.test("cancelled searches wake and join idle workers", function(context)
+    for iteration = 1, 5 do
+      local tid = 600000 + iteration
+      local stop = thread.get_channel("projectsearch_stop" .. tid)
+      local status = thread.get_channel("projectsearch_status" .. tid)
+      stop:push("stop")
+      local created = {}
+      thread.create = function(...)
+        local worker = assert(context.old_thread_create(...))
+        created[#created + 1] = worker
+        return worker
+      end
+      projectsearch._test.files_search_thread(tid, {
+        text = "needle", search_type = "plain", pathsep = PATHSEP,
+        ignore_files = {}, workers = 6, file_size_limit = 1e6,
+        roots = {{path = context.project_b}}
+      })
+      test.equal(status:first(), "cancelled")
+      test.equal(#created, 6)
+      for _, worker in ipairs(created) do
+        test.is_nil(worker:get_id(), "worker was not joined before completion")
+      end
+    end
+  end)
+
+  test.test("worker creation failure cleans up previously started workers", function(context)
+    local tid = 700000
+    local status = thread.get_channel("projectsearch_status" .. tid)
+    local first
+    thread.create = function(...)
+      if first then return nil, "injected creation failure" end
+      first = assert(context.old_thread_create(...))
+      return first
+    end
+    projectsearch._test.files_search_thread(tid, {
+      text = "needle", search_type = "plain", pathsep = PATHSEP,
+      ignore_files = {}, workers = 3, file_size_limit = 1e6,
+      roots = {{path = context.project_b}}
+    })
+    test.equal(status:first().error, "injected creation failure")
+    test.is_nil(first:get_id())
   end)
 
   test.test("result list keeps absolute path and display path", function(context)
