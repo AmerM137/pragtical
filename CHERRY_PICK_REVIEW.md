@@ -42,6 +42,77 @@ the prompt without running its callback.
 
 ---
 
+## Second pass (2026-10-27): performance only, `a746d41a..142b873f`
+
+Scope is narrower than the first pass: only performance work that leaves
+`amer-layer`'s behavior alone. New features (menus, floating views, sessions,
+audio, borderless default, WidgetList settings, treeview file counts, split
+results), plain bug fixes, dependency bumps and anything fold-related are out of
+scope, so they get no individual verdict here. They can be revisited
+separately.
+
+Each candidate was test-applied to `amer-layer` in a scratch worktree
+(`D:\git\pragtical-cp-test`, branch `amer-layer-perf`), built with MSVC `cl`
+(`meson setup --wrap-mode=forcefallback --buildtype=release`), and run through
+the full Lua suite with `SDL_VIDEO_DRIVER=dummy ./scripts/run-local build test
+scripts/lua/tests`.
+
+### Recommended, in this order
+
+| Order | Commit | Summary | Apply notes |
+|---|---|---|---|
+| 1 | `f26509d9` | Multi-cursor editing 48-135x faster (#597). | Clean. `amer-layer` never touched `doc/init.lua`. |
+| 2 | `a37bf96c` | Fix the native tokenizer start-character shortcut skipping valid matches (#620). | Test file only: keep ours, append upstream's `regex starter fallback` block. The C fix applies clean. |
+| 3 | `d3346fc8` | Renderer coordinate-scaling cleanup; fixes fractional-scale displays (#584). | Clean. Needed by 4. |
+| 4 | `0ec3874c` | Windows surface renderer: accelerated framebuffer plus vsync, removing tearing and stutter (#589). | Clean once 3 is in; conflicts without it. |
+| 5 | `b8361299` | Worker-thread cleanup plus faster findfile/project search: 180k-file scan 38s to 4s, filtering about 1s to 70-130ms (#611). | Test fixture only: keep ours, add the `thread.create` save/restore lines. Needed by 6. |
+| 6 | `4eabc79e` | Lower idle CPU: SDL event waits instead of polling sleeps, unfocused CPU 1.6% to 0.24% of a core (#645). | `main.c` is clean once 5 is in. Its tests sit in upstream's `tests/core.lua`, which `amer-layer` doesn't have; they are self-contained, so they were ported to a new `tests/core_idle.lua`. |
+
+Behavior notes for these:
+
+- `f26509d9` changes undo bookkeeping, but only toward correctness. Large
+  multi-cursor edits no longer lose part of their undo history, and an empty
+  edit no longer clears redo. `get_change_id()` is now an identity rather than a
+  stack index. Every consumer in `amer-layer` (commandview, markdownview,
+  autocomplete, search_ui) only compares it for equality, and the
+  `raw_insert`/`raw_remove` signatures that `linewrapping.lua` wraps are
+  unchanged.
+- `a37bf96c` is a correctness fix. It belongs here because the optimization it
+  repairs (`18a845b3`) is already in `amer-layer`, so without it the branch
+  carries the bug.
+- `d3346fc8` is mostly simplification. Visible changes appear only on
+  fractional-scale displays with the SDLRenderer/SDL GPU backends, where it
+  fixes doubled output and mispositioned pointer input.
+- `b8361299` gives the same search results, just faster. The worker channel
+  names change from `projectsearch_results<tid><id>` to
+  `projectsearch_results<tid>:<id>`, which affects only code that reads those
+  channels directly.
+
+### Verified result
+
+`amer-layer-perf` (the six commits above) compiles with `cl`:
+
+| Branch | Tests | Passed | Failed | Skipped |
+|---|---|---|---|---|
+| `amer-layer` (baseline) | 247 | 240 | 4 | 3 |
+| `amer-layer-perf` | 272 + 3 ported | 265 + 3 | 4 | 3 |
+
+The four failures are identical on both branches and predate this work:
+`encoding` gb18030, the `languages` Caddyfile fixture, the `projectsearch`
+"result list keeps absolute path" test, and `repl.lua` (the `repl` module isn't
+in the dev run tree). Not tried with `clang-cl`.
+
+### Considered and rejected
+
+| Commit | Summary | Reason |
+|---|---|---|
+| `87fdb026` | Widget update to cut CPU usage (#646). | It's a `widget.wrap` bump that sits on seven intervening widget bumps (WidgetList, menus, scaling integration). Taking it pulls all of them in. |
+| `11645edb` | Treeview drawing and async file counts (#641). | Mostly the new `treeview_filecount` plugin (a feature). It conflicts with `treeview.lua` and assumes `9e11e12a`. |
+| `e86b40f9`, `e62058ca` | Fix the Clang PGO build pipeline. | Build-time only, no runtime change. Only matters for `scripts/build.sh --pgo` on Unix/macOS, not for `build.bat`. Both apply clean if ever wanted. |
+| `1dc3aff7` | SDL GPU collapsed-polygon crash fix. | Crash fix rather than performance. Applies clean and is worth taking separately. |
+
+---
+
 Compared `amer-layer` with `upstream/master` on 2026-08-02, then **executed**
 the cherry-picks on branch `amer-layer-sync` (branched from `amer-layer`).
 The verdicts below reflect what actually applied, not just static inspection.
