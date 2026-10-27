@@ -109,6 +109,21 @@ test.describe("core.common", function()
       assert_contains(result, "test.lua")
     end)
 
+    test.test("keeps absolute suggestions absolute inside the root", function(context)
+      local prefix = join_path(context.temp_root, "testdir", "fi")
+      local result = common.path_suggest(prefix, context.temp_root)
+      test.equal(#result, 1)
+      assert_contains(result, join_path(context.temp_root, "testdir", "file.lua"))
+    end)
+
+    test.test("accepts forward slashes in absolute paths on Windows", function(context)
+      if PLATFORM ~= "Windows" then return end
+      local prefix = (join_path(context.temp_root, "testdir", "fi"):gsub("\\", "/"))
+      local result = common.path_suggest(prefix, system.getcwd())
+      test.equal(#result, 1)
+      test.equal(result[1], prefix:sub(1, -3) .. "file.lua")
+    end)
+
     test.test("does not prefix relative suggestions with dot slash", function(context)
       system.chdir(context.temp_root)
       local result = common.path_suggest("test")
@@ -133,6 +148,17 @@ test.describe("core.common", function()
       test.equal(#result, 1)
       assert_contains(result, join_path(context.temp_root, "testdir", "subdir"))
     end)
+
+    test.test("accepts forward slashes on Windows", function(context)
+      if PLATFORM ~= "Windows" then return end
+      local prefix = (join_path(context.temp_root, "testdir", "sub"):gsub("\\", "/"))
+      local result = common.dir_path_suggest(prefix, context.temp_root)
+      test.equal(#result, 1)
+      -- the typed prefix is kept as is, so compare without separator style
+      local expected = join_path(context.temp_root, "testdir", "subdir")
+      test.equal(result[1]:gsub("/", "\\"), (expected:gsub("/", "\\")))
+      test.equal(system.get_file_info(result[1]).type, "dir")
+    end)
   end)
 
   test.describe("dir_list_suggest", function()
@@ -156,6 +182,18 @@ test.describe("core.common", function()
       local result = common.dir_list_suggest(join_path(context.temp_root, "test"), dir_list)
       test.type(result, "table")
       test.equal(#result, 0)
+    end)
+
+    test.test("accepts forward slashes on Windows", function(context)
+      if PLATFORM ~= "Windows" then return end
+      local dir_list = {
+        join_path(context.temp_root, "testdir"),
+        join_path(context.temp_root, "projects")
+      }
+      local prefix = (join_path(context.temp_root, "test"):gsub("\\", "/"))
+      local result = common.dir_list_suggest(prefix, dir_list)
+      test.equal(#result, 1)
+      assert_contains(result, join_path(context.temp_root, "testdir"))
     end)
   end)
 
@@ -216,6 +254,9 @@ test.describe("core.common", function()
         test.not_nil(common.is_absolute_path("C:\\Users\\username\\test\\file.lua"))
         test.ok(common.is_absolute_path("\\\\server\\share\\folder\\file.txt"))
         test.is_nil(common.is_absolute_path("Users\\username\\test\\file.lua"))
+        test.not_nil(common.is_absolute_path("C:/Users/username/test/file.lua"))
+        test.ok(common.is_absolute_path("//server/share/folder/file.txt"))
+        test.is_nil(common.is_absolute_path("Users/username/test/file.lua"))
       else
         test.ok(common.is_absolute_path("/home/username/test/file.lua"))
         test.ok(common.is_absolute_path("/"))

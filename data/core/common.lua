@@ -325,6 +325,15 @@ function common.fuzzy_match_with_recents(haystack, recents, needle)
 end
 
 
+-- Lowercase a path for prefix comparison; only in Windows treat both styles
+-- of PATHSEP as equal.
+local function path_compare_key(path)
+  path = path:lower()
+  if PLATFORM == "Windows" then path = path:gsub("/", "\\") end
+  return path
+end
+
+
 ---Returns a list of paths that are relative to the input path.
 ---
 ---If a root directory is specified, the function returns paths
@@ -361,6 +370,7 @@ function common.path_suggest(text, root)
   end
   local files = system.list_dir(path) or {}
   local res = {}
+  local key = path_compare_key(text)
   for _, file in ipairs(files) do
     file = path .. file
     local info = system.get_file_info(file)
@@ -368,7 +378,8 @@ function common.path_suggest(text, root)
       if info.type == "dir" then
         file = file .. PATHSEP
       end
-      if root then
+      -- absolute input gets absolute suggestions
+      if root and not is_absolute then
         -- remove root part from file path
         local s, e = file:find(root, nil, true)
         if s == 1 then
@@ -381,7 +392,7 @@ function common.path_suggest(text, root)
           file = file:sub(e + 1)
         end
       end
-      if file:lower():find(text:lower(), nil, true) == 1 then
+      if path_compare_key(file):find(key, nil, true) == 1 then
         table.insert(res, file)
       end
     end
@@ -395,15 +406,20 @@ end
 ---@param root string The path to relate to.
 ---@return string[]
 function common.dir_path_suggest(text, root)
-  local path, name = text:match("^(.-)([^"..PATHSEP.."]*)$")
+  local pathsep = PATHSEP
+  if PLATFORM == "Windows" then
+    pathsep = "\\/"
+  end
+  local path, name = text:match("^(.-)([^"..pathsep.."]*)$")
   path = path == "" and (root or ".") or path
   path = path:gsub("[/\\]$", "") .. PATHSEP
   local files = system.list_dir(path) or {}
   local res = {}
+  local key = path_compare_key(text)
   for _, file in ipairs(files) do
     file = path .. file
     local info = system.get_file_info(file)
-    if info and info.type == "dir" and file:lower():find(text:lower(), nil, true) == 1 then
+    if info and info.type == "dir" and path_compare_key(file):find(key, nil, true) == 1 then
       table.insert(res, file)
     end
   end
@@ -416,10 +432,10 @@ end
 ---@param dir_list string[] A list of paths to filter.
 ---@return string[]
 function common.dir_list_suggest(text, dir_list)
-  local path, name = text:match("^(.-)([^"..PATHSEP.."]*)$")
   local res = {}
+  local key = path_compare_key(text)
   for _, dir_path in ipairs(dir_list) do
-    if dir_path:lower():find(text:lower(), nil, true) == 1 then
+    if path_compare_key(dir_path):find(key, nil, true) == 1 then
       table.insert(res, dir_path)
     end
   end
@@ -784,7 +800,11 @@ end
 ---@param path string
 ---@return boolean
 function common.is_absolute_path(path)
-  return path:sub(1, 1) == PATHSEP or path:match("^(%a):\\")
+  if PLATFORM == "Windows" then
+    -- Only in Windows allow using both styles of PATHSEP
+    return path:match("^[\\/]") or path:match("^(%a):[\\/]")
+  end
+  return path:sub(1, 1) == PATHSEP or nil
 end
 
 
