@@ -254,6 +254,9 @@ function ContextMenu:update()
   if self.show_context_menu then
     self:move_towards("height", self.items.height, nil, "contextmenu")
   end
+  if self.hover_since then
+    core.request_update(self.hover_since + 0.2 - system.get_time())
+  end
 end
 
 ---Draws the context menu.

@@ -1,0 +1,59 @@
+diff --git a/init.lua b/init.lua
+index c3b93bf..1d8d353 100644
+--- a/init.lua
++++ b/init.lua
+@@ -1320,20 +1320,21 @@ function Widget:animate(target, properties, options)
+         return
+       end
+     end
+   end
+ 
+   table.insert(self.animations, {
+     target = target,
+     properties = properties,
+     options = options
+   })
++  self:schedule_update()
+ end
+ 
+ ---Runs all registered animations removing duplicated and finished ones.
+ function Widget:run_animations()
+   if #self.animations > 0 then
+     -- ensure animations like show_animated are more consistently rendered
+     core.redraw = true
+     self:schedule_update(true)
+ 
+     ---@type table<widget.animation, widget.animation>
+diff --git a/treelist.lua b/treelist.lua
+index 69f88ff..6e05a90 100644
+--- a/treelist.lua
++++ b/treelist.lua
+@@ -400,24 +400,27 @@ end
+ function TreeList:on_mouse_leave(x, y, dx, dy)
+   TreeList.super.on_mouse_leave(self, x, y, dx, dy)
+   clear_hover_state(self)
+ end
+ 
+ function TreeList:update()
+   if not TreeList.super.update(self) then return false end
+ 
+   local duration = system.get_time() - self.tooltip.begin
+   local tooltip_delay = 0.5
+-  if self.hovered_item and self.tooltip.x and duration > tooltip_delay then
++  if self.hovered_item and self.tooltip.x and duration >= tooltip_delay then
+     self:move_towards(self.tooltip, "alpha", 255, 1, "treeview")
+   else
+     self.tooltip.alpha = 0
++    if self.hovered_item and self.tooltip.x then
++      core.request_update(tooltip_delay - duration)
++    end
+   end
+ 
+   self.item_icon_width = style.icon_font:get_width("D")
+   self.item_text_spacing = style.icon_font:get_width("f") / 2
+ 
+   -- this will make sure hovered_item is updated
+   local dy = math.abs(self.last_scroll_y - self.scroll.y)
+   if dy > 0 then
+     self:on_mouse_moved(core.root_view.mouse.x, core.root_view.mouse.y, 0, 0)
+     self.last_scroll_y = self.scroll.y
