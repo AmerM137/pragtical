@@ -42,6 +42,62 @@ the prompt without running its callback.
 
 ---
 
+## Third pass (2026-11-06): performance only, `142b873f..2ca70453`
+
+Same scope and method as the second pass: scratch worktree
+(`D:\git\pragtical-cp-test2`, branch `amer-layer-perf2`), MSVC `cl` release
+build, full Lua suite with `SDL_VIDEO_DRIVER=dummy`.
+
+### Applied, in this order
+
+| Order | Commit | Summary | Apply notes |
+|---|---|---|---|
+| 1 | `4f01f3fe` | Lower CPU by reducing idle view updates (#652). Views update only for input, redraws, `core.request_update(delay)` deadlines and due coroutines. Upstream: focused CPU -69% with caret blinking, -85% without. | Dropped `audioview.lua`/`codefold.lua` hunks (files absent). Upstream `tests/core.lua` hunks applied to `core_idle.lua`; caret-deadline tests added to `docview.lua`. Widget wrap **not** bumped, see below. |
+| 2 | `4bd2b8eb` | Request a draw after a view's first update (#655). | `node.lua` half only; the `rootview.lua` half is floating-view code we don't have. |
+| 3 | `28a81a54` | Request a draw after closing a node view (#659). | Clean. |
+| 4 | `2ca70453` | Rendering cache: less false damage, skip draws outside dirty regions, all renderers (#697). Upstream: static 0.48 -> 0.29 ms, caret 0.83 -> 0.40 ms, L-shaped damage 5.2 -> 0.9 ms (Surface). | Clean; does not need `2ce0703b` or `0e974f3e`. |
+
+2 and 3 are required by 1: without per-frame updates, a newly shown or closed
+view would otherwise wait for the next input event to repaint. Their tests live
+in upstream's `tests/node.lua`, which `amer-layer` doesn't have, so they were
+ported to a new `tests/node_redraw.lua`.
+
+Widget: #652 bumps `widget.wrap` past the bumps rejected in the second pass, but
+its actual widget change is 5 lines (`animate()` schedules an update; TreeList
+tooltip requests a delayed update). Those apply to our pinned `3047f9a`, so they
+are carried as `subprojects/packagefiles/widget-idle-updates.patch` via
+`diff_files` in `widget.wrap`. Meson applies it only on a fresh clone; existing
+checkouts need `subprojects/widget` removed or
+`meson subprojects update --reset`.
+
+Unfocused effect (from code, not measured): previously, with the `ipc` plugin's
+permanent background thread, an unfocused editor woke about once per frame and
+ran a caret-timing view update every half blink period. Now it wakes only for
+coroutine deadlines (IPC's 50 ms poll), and unfocused carets request nothing.
+
+### Verified result
+
+| Branch | Tests | Passed | Failed | Skipped |
+|---|---|---|---|---|
+| `amer-layer` (baseline) | 279 | 273 | 3 | 3 |
+| `amer-layer-perf2` | 302 | 296 | 3 | 3 |
+
+Same three pre-existing failures on both: `encoding` gb18030, the `languages`
+tokenizer fixtures, and `repl.lua`.
+
+### Considered and rejected
+
+| Commit | Summary | Reason |
+|---|---|---|
+| `5fa8322c` | Widget update for initial redraws (#685). | Another `widget.wrap` bump on the same rejected chain; only fixes Settings repaint. |
+| `0e974f3e` | SDL GPU polygon fills and edge coverage (#650). | Correctness change with mixed performance (simple polygons get slower). |
+
+Not performance, but worth taking separately: `fab7535d` (Lua tokenizer
+infinite loop at line end) and `2ce0703b` (keep canvases alive until frame end)
+both apply clean; `6766540b` (native leaks and buffer overflows) not tried.
+
+---
+
 ## Second pass (2026-10-27): performance only, `a746d41a..142b873f`
 
 Scope is narrower than the first pass: only performance work that leaves
