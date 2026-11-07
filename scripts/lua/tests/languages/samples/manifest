@@ -19,7 +19,7 @@ return {
   { path = "017_carbon.carbon", name = "Carbon", files = "%.carbon$" },
   { path = "018_clojure.clj", name = "Clojure", files = "%.clj$|%.cljs$|%.cljc$|%.clc$|%.edn$" },
   { path = "019_cmake.cmake", name = "CMake", files = "%.cmake$|%.cmake%.in$|/CMakeLists%.txt$|^CMakeLists%.txt$|/CMakeLists%.txt%.in$|^CMakeLists%.txt%.in$" },
-  { path = "020_c.cpp", name = "C++", files = "%.h$|%.inl$|%.cpp$|%.cc$|%.C$|%.cxx$|%.c++$|%.hh$|%.H$|%.hxx$|%.hpp$|%.h++$|%.cu$|%.ino$" },
+  { path = "020_c.cpp", name = "C++", files = "%.h$|%.inl$|%.cpp$|%.cc$|%.C$|%.cxx$|%.c++$|%.hh$|%.H$|%.hxx$|%.hpp$|%.h++$|%.ino$" },
   { path = "021_c.cs", name = "C#", files = "%.cs$" },
   { path = "022_css.css", name = "CSS", files = "%.css$" },
   { path = "023_cue.cue", name = "CUE", files = "%.cue$" },
@@ -124,4 +124,5 @@ return {
   { path = "121_yaml.yaml", name = "YAML", files = "%.yml$|%.yaml$" },
   { path = "122_zig.zig", name = "Zig", files = "%.zig$" },
   { path = "123_json.json", name = "JSON", files = "%.json$|%.cjson$|%.jsonc$|%.ipynb$" },
+  { path = "124_cuda.cu", name = "CUDA", files = "%.cu$|%.cuh$" },
 }
