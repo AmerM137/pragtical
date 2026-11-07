@@ -42,6 +42,65 @@ the prompt without running its callback.
 
 ---
 
+## Subprojects and fixes (2026-11-06), against master `2ca70453`
+
+### Subprojects
+
+| Wrap | Now | Notes |
+|---|---|---|
+| `sdl3`, `sdl3_image`, `sdl3_net` | 3.4.18, 3.4.8, 3.2.0 | Match master, packagefiles included. `sdl3_net` moves from a git pin to the release tarball. Upstream's `sdl3_image` packagefile still declares version 3.4.6. |
+| `freetype2`, `libpng`, `mbedtls`, `pcre2` | 2.15.0, 1.6.59, 4.2.0, 10.49 | Match master. |
+| `colors`, `plugins`, `ppm` | `17b6205`, `46b96d9`, `v1.8.0` | Match master. ppm v1.8.0 checks for `core.menu_view`, `core.request_update` and `View.set_floating` before using them. `ppm.wrap` previously tracked `head`. |
+| `widget` | `e370096` + `widget-idle-updates.patch` | **Not** master. Every later revision calls `View:set_floating`/`show_floating`/`hide_floating`, which arrive with core floating views (#630) and are absent here. Folding is not the blocker. `e370096` adds WidgetList plus TextBox, scrollbar and hover fixes; `TextView.disable_save` is a no-op without #626. |
+| `ogg`, `opus`, `opusfile`, `sdl3_mixer` | not added | Only used by the audio feature, which `amer-layer` doesn't carry. |
+
+An existing `subprojects/<name>` directory is built as-is: Meson neither checks
+out a changed wrap revision nor re-applies `diff_files`. After changing a git
+pin, delete the directory (or `meson subprojects update --reset`) and rebuild
+with `build.bat clean`.
+
+### Language plugins
+
+`extra_languages` defaults to `false` and `build.bat` doesn't enable it, so the
+`plugins` subproject is only read by the language fixture test. What ships is
+the 12 language plugins `amer-layer` vendors in `data/plugins/` (batch, c3, go,
+make, meson, odin, powershell, psql, rust, sh, toml, ts). All 12 were verbatim
+copies of older `pragtical/plugins` revisions (`48a0478`, `25d0b6f` for C3), so
+they were refreshed to `46b96d9`. C3 follows upstream's 0.8.5 update, which
+drops the separate C3 Contract (`.c3contract`) syntax. None of the new files use
+`first_line` rules (#606).
+
+Taken with it:
+
+- `54cf0da0`: `character.special` falls back to `operator`; the new language
+  files emit that token type.
+- `eee83209`: master's fixture samples and manifest. `languages/init.lua` stays
+  ours, since master's version tests #606.
+- `206b061c`: `.xhtml` as HTML, `.svg` as XML (two patterns plus a test).
+- New CUDA fixture; `.cu` removed from the C++ fixture to match `ab33e02a`.
+
+The language fixture test, failing since before the second pass, now passes.
+
+### Fixes
+
+| Commit | Summary | Apply notes |
+|---|---|---|
+| `fab7535d` | Lua tokenizer infinite loop when a nested syntax closes on a line's last character (#663). | Clean. |
+| `2ce0703b` | Keep queued canvases alive until frame end under LuaJIT; add a canvas generation so a reused address can't match a stale draw hash (#658). | Clean. |
+| `6766540b` | Native leaks and buffer overflows in regex, diff, canvas, net, renderer and system (#686). | All C applies clean. Its `tests/net.lua` hunk targets a file from #677 we don't have; the one new case is ported to `tests/net_bounds.lua`. |
+
+### Verified result
+
+| Branch state | Tests | Passed | Failed | Skipped |
+|---|---|---|---|---|
+| After the third pass | 302 | 296 | 3 | 3 |
+| After subprojects and language plugins | 304 | 299 | 2 | 3 |
+| After the fixes | 321 | 316 | 2 | 3 |
+
+Remaining failures: `encoding` gb18030 and `repl.lua`.
+
+---
+
 ## Third pass (2026-11-06): performance only, `142b873f..2ca70453`
 
 Same scope and method as the second pass: scratch worktree
