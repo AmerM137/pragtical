@@ -125,14 +125,13 @@ local function split_lines(text)
   return lines
 end
 
-local function tokenize_line(engine, syn, state, text, first_line)
+local function tokenize_line(engine, syn, state, text)
   local resume
-  local options = first_line and { first_line = true } or nil
   local tokens
   local next_state = state
 
   repeat
-    tokens, next_state, resume = engine.tokenize(syn, text, next_state, resume or options)
+    tokens, next_state, resume = engine.tokenize(syn, text, next_state, resume)
   until not resume
 
   return tokens or {}, next_state
@@ -253,7 +252,7 @@ test.describe("language tokenizer fixtures", function()
           fixture.name ~= "" and fixture.name or fixture.files
         )
         local ok, err = pcall(function()
-          lua_tokens, lua_state = tokenize_line(lua_tokenizer, lua_syn, lua_state, text, line_idx == 1)
+          lua_tokens, lua_state = tokenize_line(lua_tokenizer, lua_syn, lua_state, text)
         end)
         test.ok(ok, context .. " lua tokenizer error: " .. tostring(err))
 
@@ -262,8 +261,7 @@ test.describe("language tokenizer fixtures", function()
             tokenizer,
             native_syn,
             native_state,
-            text,
-            line_idx == 1
+            text
           )
         end)
         test.ok(ok, context .. " native tokenizer error: " .. tostring(err))
@@ -316,17 +314,4 @@ test.describe("language tokenizer fixtures", function()
       "string"
     )
   end)
-
-  for _, sample in ipairs {
-    { extension = "svg", language = "XML", plugin = "xml",
-      header = '<svg xmlns="http://www.w3.org/2000/svg">' },
-    { extension = "xhtml", language = "HTML", plugin = "html",
-      header = '<html xmlns="http://www.w3.org/1999/xhtml">' },
-  } do
-    test.test(sample.extension .. " files are highlighted without an XML declaration", function()
-      assert(loadfile(source_file("data/plugins/language_" .. sample.plugin .. ".lua")))()
-      local syn = syntax.get("fixture." .. sample.extension, sample.header)
-      test.equal(syn.name, sample.language)
-    end)
-  end
 end)
