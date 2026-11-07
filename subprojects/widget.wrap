@@ -1,6 +1,6 @@
 [wrap-git]
 url = https://github.com/pragtical/widget.git
-revision = 3047f9a27415fb5f43710848ffa1fc6a30ee09a6
+revision = e3700967fbf4afe4d77f71f335cebfbe234fa711
 depth = 1
 patch_directory = widget
 diff_files = widget-idle-updates.patch
