@@ -42,6 +42,36 @@ the prompt without running its callback.
 
 ---
 
+## Fourth pass (2026-11-10): performance only, `2ca70453..cb8054d3`
+
+Same method as before: scratch worktree (`D:\git\pragtical-cp-test3`, branch
+`amer-layer-perf3`), MSVC `cl` release build, full Lua suite with
+`SDL_VIDEO_DRIVER=dummy`.
+
+### Applied
+
+| Commit | Summary | Apply notes |
+|---|---|---|
+| `cb8054d3` | Native tokenizer reuses text indexing and completed tokens across time-sliced resumes, and stops rescanning line text for each match (#709). Upstream: 1 MB CodeMirror line 69.9s -> 1.33s; 64 KB prefix 12.2s (Lua) -> 16.3ms; regular files 7-35x faster than Lua. | One conflict in `f_tokenizer_tokenize`: upstream builds on first-line rules (#606), which we don't have. Resolved with `resume_idx = 4` when arg 4 is a table, and the `first_line` resume field dropped. The new cached-resume test called `tokenize(..., { resume = r })` (the #606 options form); changed to pass `r` directly. The highlighter already passes the resume table back intact, so the native cache hits. |
+
+### Verified result
+
+| Branch state | Tests | Passed | Failed | Skipped |
+|---|---|---|---|---|
+| Before (after the fixes) | 321 | 316 | 2 | 3 |
+| With `cb8054d3` | 329 | 324 | 2 | 3 |
+
+Same two failures: `encoding` gb18030 and `repl.lua`.
+
+### Not taken from this range
+
+Nothing else in `2ca70453..cb8054d3` is performance work. `cfc53e7a` (wrap at
+the line limit), `f23616f1`/`700279eb` (Markdown), `de9d2b3f` (wrapped line
+position mapping, assumes #699), `6a09be6b` (MSVC packaging), `5ea3adf9`
+(SDL3 3.4.20) and `98e6bddc` (another widget bump) are out of scope.
+
+---
+
 ## Subprojects and fixes (2026-11-06), against master `2ca70453`
 
 ### Subprojects
