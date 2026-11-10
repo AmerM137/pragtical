@@ -63,6 +63,36 @@ Same method as before: scratch worktree (`D:\git\pragtical-cp-test3`, branch
 
 Same two failures: `encoding` gb18030 and `repl.lua`.
 
+### Benchmark
+
+Exact parent `a8e2c9d9` against `60ceb8a5`, both MSVC release builds, so #709
+is the only difference. Script: `D:\git\pragtical-bench-709\tests\bench_tokenizer.lua`,
+run through `run-local ... test` with `SDL_VIDEO_DRIVER=dummy`. Five
+alternating rounds, median shown; token output was identical on both builds in
+every case. Long-line input is a real 272 KB single-line `katex.min.js`.
+"Split across frames" resumes with the editor's 60 fps budget
+(`1/60 - 0.004` s), which is how the highlighter drives it.
+
+| Case (native tokenizer) | Before | After | Speedup |
+|---|---|---|---|
+| 272 KB line, split across frames | 3032 ms, 353 frames | 62 ms, 8 frames | 49x |
+| 272 KB line, one call | 2539 ms | 61 ms | 42x |
+| 64 KB prefix, split across frames | 217 ms, 32 frames | 6.0 ms, 1 frame | 36x |
+| 16 KB prefix, split across frames | 10.2 ms | 3.2 ms | 3.2x |
+| `tokenizer.c`, whole file (2.5k lines) | 31.0 ms | 27.1 ms | 1.14x |
+| `docview.lua`, whole file (1.1k lines) | 9.5 ms | 6.2 ms | 1.53x |
+| `changelog.md`, whole file (3.4k lines) | 23.7 ms | 23.9 ms | same |
+
+In the editor, a 272 KB minified line used to take about 6 s of full per-frame
+budgets to highlight; it now takes 8 frames. Native remains 8-25x faster than
+the Lua backend on whole files.
+
+The Lua backend is unchanged by #709 (0.99-1.05x). An earlier run showed it
+10-17% slower on the new build; that was CPU contention from other work on the
+machine and disappeared on the rerun. A first comparison against the older
+`bench-baseline` worktree (`ba5b6b77`) was discarded because that build also
+lacks the third-pass commits.
+
 ### Not taken from this range
 
 Nothing else in `2ca70453..cb8054d3` is performance work. `cfc53e7a` (wrap at
